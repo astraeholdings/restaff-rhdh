@@ -56,13 +56,35 @@ export function AuthProvider({ children }) {
     if (error) throw error
   }
 
+  const signUp = async (email, password, fullName) => {
+    const { data, error } = await supabase.auth.signUp({ email, password })
+    if (error) throw error
+
+    if (data.user) {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            user_id: data.user.id,
+            full_name: fullName,
+            role: 'staff',
+            active: true,
+          },
+        ])
+
+      if (profileError) throw profileError
+    }
+
+    return data
+  }
+
   const signOut = async () => {
     const { error } = await supabase.auth.signOut()
     if (error) throw error
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   )

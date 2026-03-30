@@ -19,7 +19,7 @@ export function HomeProvider({ children }) {
     const fetchHomes = async () => {
       let query = supabase.from('homes').select('*').eq('active', true)
 
-      if (profile.role !== 'admin') {
+      if (profile.role !== 'admin' && profile.role !== 'superAdmin') {
         query = query.eq('id', profile.home_id)
       }
 

@@ -14,8 +14,11 @@ export function Admin() {
   const [pendingNotes, setPendingNotes] = useState([])
   const [loading, setLoading] = useState(false)
 
-  // Check admin
-  if (profile?.role !== 'admin') {
+  // Check admin/superAdmin access
+  const isSuperAdmin = profile?.role === 'superAdmin'
+  const isAdmin = profile?.role === 'admin'
+
+  if (!isAdmin && !isSuperAdmin) {
     return (
       <div className="card text-center py-8">
         <p className="text-red-light font-medium">Unauthorized: Admin access required</p>
@@ -31,6 +34,13 @@ export function Admin() {
     setLoading(true)
     try {
       switch (activeTab) {
+        case 'users':
+          const { data: usersData } = await supabase
+            .from('profiles')
+            .select('*, homes(name)')
+            .order('full_name')
+          setStaff(usersData || [])
+          break
         case 'homes':
           const { data: homesData } = await supabase.from('homes').select('*').order('name')
           setHomes(homesData || [])
@@ -98,7 +108,36 @@ export function Admin() {
     }
   }
 
+  const updateUserRole = async (userId, newRole) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole })
+        .eq('id', userId)
+
+      if (error) throw error
+      await loadData()
+    } catch (err) {
+      console.error('Error updating user role:', err)
+    }
+  }
+
+  const toggleUserActive = async (userId, currentStatus) => {
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ active: !currentStatus })
+        .eq('id', userId)
+
+      if (error) throw error
+      await loadData()
+    } catch (err) {
+      console.error('Error updating user status:', err)
+    }
+  }
+
   const tabs = [
+    ...(isSuperAdmin ? [{ id: 'users', label: 'User Management' }] : []),
     { id: 'homes', label: 'Homes' },
     { id: 'staff', label: 'Staff' },
     { id: 'clients', label: 'Clients' },
@@ -130,6 +169,85 @@ export function Admin() {
         <div className="text-center py-8">Loading...</div>
       ) : (
         <div>
+          {/* Users Tab - Super Admin Only */}
+          {activeTab === 'users' && isSuperAdmin && (
+            <div className="space-y-4">
+              <div className="mb-4">
+                <h2 className="text-xl font-serif font-bold mb-4">All Users</h2>
+                <p className="text-sm text-gray-600 mb-4">Manage user roles and permissions</p>
+              </div>
+
+              <div className="card overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left p-3 font-medium">Name</th>
+                      <th className="text-left p-3 font-medium">Email</th>
+                      <th className="text-left p-3 font-medium">Role</th>
+                      <th className="text-left p-3 font-medium">Home</th>
+                      <th className="text-left p-3 font-medium">Position</th>
+                      <th className="text-left p-3 font-medium">Status</th>
+                      <th className="text-left p-3 font-medium">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {staff.map(person => (
+                      <tr key={person.id} className="border-b hover:bg-gray-50">
+                        <td className="p-3 font-medium">{person.full_name}</td>
+                        <td className="p-3 text-sm text-gray-600">
+                          {person.user_id ? `User ${person.user_id.substring(0, 8)}...` : '—'}
+                        </td>
+                        <td className="p-3">
+                          <select
+                            value={person.role}
+                            onChange={(e) => updateUserRole(person.id, e.target.value)}
+                            disabled={person.role === 'superAdmin' && person.id !== profile?.id}
+                            className="form-input text-sm py-1"
+                          >
+                            <option value="staff">Staff</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="admin">Admin</option>
+                            {person.role === 'superAdmin' && (
+                              <option value="superAdmin">Super Admin</option>
+                            )}
+                          </select>
+                        </td>
+                        <td className="p-3 text-sm">{person.homes?.name || '—'}</td>
+                        <td className="p-3 text-sm">{person.position || '—'}</td>
+                        <td className="p-3">
+                          <button
+                            onClick={() => toggleUserActive(person.id, person.active)}
+                            disabled={person.role === 'superAdmin'}
+                            className={`badge text-xs cursor-pointer ${
+                              person.active ? 'badge-success' : 'badge-warning'
+                            }`}
+                          >
+                            {person.active ? 'Active' : 'Inactive'}
+                          </button>
+                        </td>
+                        <td className="p-3 text-sm">
+                          <button className="text-primary hover:underline text-xs">
+                            Edit
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="card bg-blue-50">
+                <h3 className="font-medium mb-2">Role Descriptions</h3>
+                <div className="space-y-2 text-sm text-gray-700">
+                  <p><span className="font-medium">Super Admin:</span> Full system access, can manage all users and homes</p>
+                  <p><span className="font-medium">Admin:</span> Can manage home staff and clients, review daily notes</p>
+                  <p><span className="font-medium">Supervisor:</span> Can supervise staff, approve daily notes</p>
+                  <p><span className="font-medium">Staff:</span> Can clock in/out, create daily notes, log medications</p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Homes Tab */}
           {activeTab === 'homes' && (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

@@ -9,8 +9,8 @@ export function HomeSelector() {
 
   if (!activeHome || homes.length === 0) return null
 
-  const isAdmin = profile?.role === 'admin'
-  const displayHomes = isAdmin ? homes : homes
+  const isAdmin = profile?.role === 'admin' || profile?.role === 'superAdmin'
+  const displayHomes = homes
   const showAllHomes = isAdmin && homes.length > 1
 
   return (

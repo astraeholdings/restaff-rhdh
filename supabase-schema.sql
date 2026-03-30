@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS profiles (
   user_id UUID NOT NULL UNIQUE REFERENCES auth.users(id) ON DELETE CASCADE,
   home_id UUID REFERENCES homes(id),
   full_name TEXT NOT NULL,
-  role TEXT NOT NULL DEFAULT 'staff', -- 'admin', 'staff', 'supervisor'
+  role TEXT NOT NULL DEFAULT 'staff', -- 'superAdmin', 'admin', 'supervisor', 'staff'
   position TEXT, -- 'direct support', 'supervisor', 'manager', etc
   phone TEXT,
   active BOOLEAN DEFAULT true,
@@ -170,12 +170,38 @@ CREATE TABLE IF NOT EXISTS grocery_items (
   updated_at TIMESTAMP DEFAULT now()
 );
 
--- Helper function to check if user is admin
+-- Helper function to check if user is superAdmin
+CREATE OR REPLACE FUNCTION is_super_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (
+    SELECT role = 'superAdmin'
+    FROM profiles
+    WHERE user_id = auth.uid()
+    LIMIT 1
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Helper function to check if user is admin or superAdmin
 CREATE OR REPLACE FUNCTION is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN (
-    SELECT role = 'admin'
+    SELECT role IN ('admin', 'superAdmin')
+    FROM profiles
+    WHERE user_id = auth.uid()
+    LIMIT 1
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Helper function to check if user is supervisor or above
+CREATE OR REPLACE FUNCTION is_supervisor_or_above()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN (
+    SELECT role IN ('supervisor', 'admin', 'superAdmin')
     FROM profiles
     WHERE user_id = auth.uid()
     LIMIT 1
@@ -398,3 +424,8 @@ INSERT INTO homes (id, name, address, license_number) VALUES
   ('550e8400-e29b-41d4-a716-446655440000', 'Rising Hill Main', '123 Oak Street', 'RH-001'),
   ('550e8400-e29b-41d4-a716-446655440001', 'Rising Hill Annex', '456 Maple Avenue', 'RH-002')
 ON CONFLICT DO NOTHING;
+
+-- IMPORTANT: After creating the master admin user in Supabase Auth (Braylon@astraeholdings.com),
+-- insert their profile with superAdmin role:
+-- INSERT INTO profiles (user_id, full_name, role, active) VALUES
+--   ('UUID_FROM_AUTH_USERS_TABLE', 'Braylon', 'superAdmin', true);

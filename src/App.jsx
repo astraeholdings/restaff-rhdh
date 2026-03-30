@@ -7,6 +7,7 @@ import { Layout } from './components/Layout'
 
 // Pages
 import { Login } from './pages/Login'
+import { Signup } from './pages/Signup'
 import { Dashboard } from './pages/Dashboard'
 import { ClockInOut } from './pages/ClockInOut'
 import { DailyNotes } from './pages/DailyNotes'
@@ -26,8 +27,9 @@ export default function App() {
       <AuthProvider>
         <HomeProvider>
           <Routes>
-            {/* Public Route */}
+            {/* Public Routes */}
             <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
 
             {/* Protected Routes */}
             <Route
