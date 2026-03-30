@@ -1,9 +1,10 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import { HomeProvider } from './context/HomeContext'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Layout } from './components/Layout'
+import { logger } from './lib/logger'
 
 // Pages
 import { Login } from './pages/Login'
@@ -20,8 +21,17 @@ import { Incidents } from './pages/Incidents'
 import { Clients } from './pages/Clients'
 import { Grocery } from './pages/Grocery'
 import { Admin } from './pages/Admin'
+import { Logs } from './pages/Logs'
 
 export default function App() {
+  useEffect(() => {
+    logger.info('🚀 App initialized', {
+      url: window.location.href,
+      timestamp: new Date().toISOString(),
+      userAgent: navigator.userAgent,
+    })
+  }, [])
+
   return (
     <Router>
       <AuthProvider>
@@ -50,6 +60,7 @@ export default function App() {
                       <Route path="/clients" element={<Clients />} />
                       <Route path="/grocery" element={<Grocery />} />
                       <Route path="/admin" element={<Admin />} />
+                      <Route path="/logs" element={<Logs />} />
                       <Route path="/" element={<Navigate to="/dashboard" replace />} />
                     </Routes>
                   </Layout>

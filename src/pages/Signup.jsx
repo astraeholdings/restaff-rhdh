@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { logger } from '../lib/logger'
 
 export function Signup() {
   const { signUp } = useAuth()
@@ -54,10 +55,22 @@ export function Signup() {
     }
 
     try {
+      logger.info('Signup form submitted', {
+        email: formData.email,
+        fullName: formData.fullName,
+      })
       await signUp(formData.email, formData.password, formData.fullName)
+      logger.success('Account created, redirecting to dashboard')
       navigate('/dashboard')
     } catch (err) {
-      setError(err.message || 'Failed to create account')
+      const errorMessage = err.message || 'Failed to create account'
+      logger.error('Signup failed:', {
+        email: formData.email,
+        error: errorMessage,
+        code: err.code,
+        status: err.status,
+      })
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }

@@ -22,6 +22,7 @@ export function Layout({ children }) {
     { label: 'Incidents', path: '/incidents', icon: '⚠️' },
     { label: 'Clients', path: '/clients', icon: '👥' },
     { label: 'Grocery', path: '/grocery', icon: '🛒' },
+    { label: 'Logs', path: '/logs', icon: '📋' },
   ]
 
   const adminItems = isAdmin ? [

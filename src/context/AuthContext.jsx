@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { logger } from '../lib/logger'
 
 const AuthContext = createContext()
 
@@ -10,22 +11,41 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
-        setUser(session.user)
-        await fetchProfile(session.user.id)
+      try {
+        logger.info('Checking authentication status...')
+        const { data: { session }, error } = await supabase.auth.getSession()
+
+        if (error) {
+          logger.error('Failed to get session:', error)
+          setLoading(false)
+          return
+        }
+
+        if (session?.user) {
+          logger.success('Session found for user:', { userId: session.user.id, email: session.user.email })
+          setUser(session.user)
+          await fetchProfile(session.user.id)
+        } else {
+          logger.info('No active session found')
+        }
+      } catch (err) {
+        logger.error('Error checking auth:', err)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     checkAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        logger.info('Auth state changed:', { event, userId: session?.user?.id })
+
         if (session?.user) {
           setUser(session.user)
           await fetchProfile(session.user.id)
         } else {
+          logger.info('User logged out')
           setUser(null)
           setProfile(null)
         }
@@ -37,50 +57,117 @@ export function AuthProvider({ children }) {
   }, [])
 
   const fetchProfile = async (userId) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single()
+    try {
+      logger.info('Fetching user profile...', { userId })
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .single()
 
-    if (error) {
-      console.error('Error fetching profile:', error)
+      if (error) {
+        logger.error('Failed to fetch profile:', { error: error.message, code: error.code })
+        setProfile(null)
+      } else {
+        logger.success('Profile loaded successfully', {
+          profileId: data?.id,
+          name: data?.full_name,
+          role: data?.role,
+        })
+        setProfile(data)
+      }
+    } catch (err) {
+      logger.error('Error fetching profile:', err)
       setProfile(null)
-    } else {
-      setProfile(data)
     }
   }
 
   const signIn = async (email, password) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) throw error
+    try {
+      logger.info('Attempting sign in...', { email })
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+
+      if (error) {
+        logger.error('Sign in failed:', {
+          email,
+          error: error.message,
+          code: error.status,
+        })
+        throw error
+      }
+
+      logger.success('Sign in successful', { userId: data.user?.id, email })
+      return data
+    } catch (err) {
+      logger.error('Sign in error:', err)
+      throw err
+    }
   }
 
   const signUp = async (email, password, fullName) => {
-    const { data, error } = await supabase.auth.signUp({ email, password })
-    if (error) throw error
+    try {
+      logger.info('Attempting sign up...', { email, fullName })
+      const { data, error } = await supabase.auth.signUp({ email, password })
 
-    if (data.user) {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert([
-          {
-            user_id: data.user.id,
-            full_name: fullName,
-            role: 'staff',
-            active: true,
-          },
-        ])
+      if (error) {
+        logger.error('Sign up failed:', {
+          email,
+          error: error.message,
+          code: error.status,
+        })
+        throw error
+      }
 
-      if (profileError) throw profileError
+      if (data.user) {
+        logger.info('User created, creating profile...', { userId: data.user.id })
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert([
+            {
+              user_id: data.user.id,
+              full_name: fullName,
+              role: 'staff',
+              active: true,
+            },
+          ])
+
+        if (profileError) {
+          logger.error('Failed to create profile:', {
+            userId: data.user.id,
+            error: profileError.message,
+          })
+          throw profileError
+        }
+
+        logger.success('Sign up successful, profile created', {
+          userId: data.user.id,
+          email,
+          fullName,
+        })
+      }
+
+      return data
+    } catch (err) {
+      logger.error('Sign up error:', err)
+      throw err
     }
-
-    return data
   }
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    try {
+      logger.info('Signing out...')
+      const { error } = await supabase.auth.signOut()
+
+      if (error) {
+        logger.error('Sign out failed:', { error: error.message })
+        throw error
+      }
+
+      logger.success('Sign out successful')
+    } catch (err) {
+      logger.error('Sign out error:', err)
+      throw err
+    }
   }
 
   return (

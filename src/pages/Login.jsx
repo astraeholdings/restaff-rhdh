@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
+import { logger } from '../lib/logger'
 
 export function Login() {
   const { signIn } = useAuth()
@@ -16,10 +17,19 @@ export function Login() {
     setLoading(true)
 
     try {
+      logger.info('Login form submitted', { email })
       await signIn(email, password)
+      logger.success('Login successful, redirecting to dashboard')
       navigate('/dashboard')
     } catch (err) {
-      setError(err.message || 'Failed to sign in')
+      const errorMessage = err.message || 'Failed to sign in'
+      logger.error('Login failed:', {
+        email,
+        error: errorMessage,
+        code: err.code,
+        status: err.status,
+      })
+      setError(errorMessage)
     } finally {
       setLoading(false)
     }
