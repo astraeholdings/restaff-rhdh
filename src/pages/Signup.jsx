@@ -14,6 +14,7 @@ export function Signup() {
   })
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [confirmationSent, setConfirmationSent] = useState(false)
 
   const handleChange = (e) => {
     const { name, value } = e.target
@@ -59,9 +60,19 @@ export function Signup() {
         email: formData.email,
         fullName: formData.fullName,
       })
-      await signUp(formData.email, formData.password, formData.fullName)
-      logger.success('Account created, redirecting to dashboard')
-      navigate('/dashboard')
+      const result = await signUp(formData.email, formData.password, formData.fullName)
+
+      // If session exists, user is auto-confirmed (e.g. confirmation disabled in Supabase)
+      if (result.session) {
+        logger.success('Account created and auto-confirmed, redirecting to dashboard')
+        navigate('/dashboard')
+      } else {
+        // Email confirmation required - show the confirmation screen
+        logger.info('Account created, email confirmation required', {
+          email: formData.email,
+        })
+        setConfirmationSent(true)
+      }
     } catch (err) {
       const errorMessage = err.message || 'Failed to create account'
       logger.error('Signup failed:', {
@@ -76,6 +87,47 @@ export function Signup() {
     }
   }
 
+  // Confirmation pending screen
+  if (confirmationSent) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          <div className="bg-white rounded-lg shadow-xl p-8 text-center">
+            <div className="text-6xl mb-4">📧</div>
+            <h1 className="text-2xl font-serif font-bold text-gray-900 mb-4">Check Your Email</h1>
+            <p className="text-gray-600 mb-2">
+              We sent a confirmation link to:
+            </p>
+            <p className="font-medium text-gray-900 mb-6">{formData.email}</p>
+            <div className="bg-blue-50 border border-blue-200 rounded p-4 mb-6 text-left">
+              <h3 className="font-medium text-blue-900 mb-2">Next steps:</h3>
+              <ol className="text-sm text-blue-800 space-y-2 list-decimal list-inside">
+                <li>Open your email inbox</li>
+                <li>Find the email from Rising Hill (check spam/junk too)</li>
+                <li>Click the confirmation link</li>
+                <li>You'll be automatically signed in</li>
+              </ol>
+            </div>
+            <div className="space-y-3">
+              <button
+                onClick={() => setConfirmationSent(false)}
+                className="w-full btn-secondary text-sm"
+              >
+                Use a different email
+              </button>
+              <Link
+                to="/login"
+                className="block w-full text-center text-sm text-gray-600 hover:text-gray-900"
+              >
+                Already confirmed? Sign in
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary to-primary-dark flex items-center justify-center p-4">
       <div className="w-full max-w-md">
@@ -86,7 +138,7 @@ export function Signup() {
           </div>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-light text-white rounded">
+            <div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-800 rounded text-sm">
               {error}
             </div>
           )}

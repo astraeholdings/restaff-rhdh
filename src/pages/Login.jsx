@@ -10,10 +10,12 @@ export function Login() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [needsConfirmation, setNeedsConfirmation] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+    setNeedsConfirmation(false)
     setLoading(true)
 
     try {
@@ -23,13 +25,23 @@ export function Login() {
       navigate('/dashboard')
     } catch (err) {
       const errorMessage = err.message || 'Failed to sign in'
+      const errorCode = err.code || ''
       logger.error('Login failed:', {
         email,
         error: errorMessage,
-        code: err.code,
+        code: errorCode,
         status: err.status,
       })
-      setError(errorMessage)
+
+      // Check for email not confirmed
+      if (
+        errorMessage.toLowerCase().includes('email not confirmed') ||
+        errorCode === 'email_not_confirmed'
+      ) {
+        setNeedsConfirmation(true)
+      } else {
+        setError(errorMessage)
+      }
     } finally {
       setLoading(false)
     }
@@ -44,8 +56,27 @@ export function Login() {
             <p className="text-gray-600">Developmental Homes Staff Portal</p>
           </div>
 
-          {error && (
-            <div className="mb-4 p-4 bg-red-light text-white rounded">
+          {/* Email not confirmed banner */}
+          {needsConfirmation && (
+            <div className="mb-4 p-4 bg-yellow-50 border border-yellow-300 rounded">
+              <div className="flex items-start gap-3">
+                <span className="text-2xl">📧</span>
+                <div>
+                  <p className="font-medium text-yellow-900 mb-1">Email not confirmed yet</p>
+                  <p className="text-sm text-yellow-800 mb-2">
+                    Please check your inbox for <strong>{email}</strong> and click the confirmation link we sent you.
+                  </p>
+                  <p className="text-xs text-yellow-700">
+                    Don't see it? Check your spam/junk folder. The email is from Supabase or noreply.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Generic error banner */}
+          {error && !needsConfirmation && (
+            <div className="mb-4 p-4 bg-red-100 border border-red-300 text-red-800 rounded text-sm">
               {error}
             </div>
           )}
@@ -85,9 +116,6 @@ export function Login() {
           </form>
 
           <div className="mt-6 text-center">
-            <p className="text-sm text-gray-600 mb-3">
-              Demo credentials available upon request
-            </p>
             <p className="text-sm text-gray-600">
               Don't have an account?{' '}
               <Link to="/signup" className="text-primary font-medium hover:underline">

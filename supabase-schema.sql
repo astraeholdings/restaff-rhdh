@@ -234,6 +234,12 @@ CREATE POLICY "Admin can manage homes" ON homes
 CREATE POLICY "Users can read profiles" ON profiles
   FOR SELECT USING (auth.role() = 'authenticated');
 
+CREATE POLICY "Users can insert own profile" ON profiles
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own profile" ON profiles
+  FOR UPDATE USING (auth.uid() = user_id);
+
 CREATE POLICY "Admin can manage profiles" ON profiles
   FOR ALL USING (is_admin());
 

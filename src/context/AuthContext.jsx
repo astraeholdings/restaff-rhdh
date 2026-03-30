@@ -65,7 +65,33 @@ export function AuthProvider({ children }) {
         .eq('user_id', userId)
         .single()
 
-      if (error) {
+      if (error && error.code === 'PGRST116') {
+        // No profile row found — create a default one
+        logger.warn('No profile found, creating default profile...', { userId })
+        const { data: userData } = await supabase.auth.getUser()
+        const email = userData?.user?.email || ''
+        const name = email.split('@')[0] || 'New User'
+
+        const { data: newProfile, error: insertErr } = await supabase
+          .from('profiles')
+          .insert([{ user_id: userId, full_name: name, role: 'staff', active: true }])
+          .select()
+          .single()
+
+        if (insertErr) {
+          logger.error('Failed to create default profile:', {
+            error: insertErr.message,
+            code: insertErr.code,
+          })
+          setProfile(null)
+        } else {
+          logger.success('Default profile created', {
+            profileId: newProfile?.id,
+            name: newProfile?.full_name,
+          })
+          setProfile(newProfile)
+        }
+      } else if (error) {
         logger.error('Failed to fetch profile:', { error: error.message, code: error.code })
         setProfile(null)
       } else {
@@ -107,7 +133,18 @@ export function AuthProvider({ children }) {
   const signUp = async (email, password, fullName) => {
     try {
       logger.info('Attempting sign up...', { email, fullName })
-      const { data, error } = await supabase.auth.signUp({ email, password })
+
+      // Build the callback URL for email confirmation
+      const redirectUrl = `${window.location.origin}/auth/callback`
+      logger.debug('Email confirmation redirect URL:', { redirectUrl })
+
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+        },
+      })
 
       if (error) {
         logger.error('Sign up failed:', {
@@ -119,7 +156,11 @@ export function AuthProvider({ children }) {
       }
 
       if (data.user) {
-        logger.info('User created, creating profile...', { userId: data.user.id })
+        logger.info('User created, creating profile...', {
+          userId: data.user.id,
+          hasSession: !!data.session,
+        })
+
         const { error: profileError } = await supabase
           .from('profiles')
           .insert([
@@ -135,15 +176,24 @@ export function AuthProvider({ children }) {
           logger.error('Failed to create profile:', {
             userId: data.user.id,
             error: profileError.message,
+            code: profileError.code,
           })
-          throw profileError
+          // Don't throw here - profile creation via RLS might fail before
+          // email is confirmed; we'll retry on first login
+          logger.warn('Profile creation deferred - will retry after email confirmation')
+        } else {
+          logger.success('Profile created', {
+            userId: data.user.id,
+            email,
+            fullName,
+          })
         }
 
-        logger.success('Sign up successful, profile created', {
-          userId: data.user.id,
-          email,
-          fullName,
-        })
+        if (data.session) {
+          logger.success('Sign up auto-confirmed (no email confirmation needed)', { email })
+        } else {
+          logger.info('Sign up requires email confirmation', { email })
+        }
       }
 
       return data

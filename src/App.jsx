@@ -22,6 +22,7 @@ import { Clients } from './pages/Clients'
 import { Grocery } from './pages/Grocery'
 import { Admin } from './pages/Admin'
 import { Logs } from './pages/Logs'
+import { AuthCallback } from './pages/AuthCallback'
 
 export default function App() {
   useEffect(() => {
@@ -40,6 +41,7 @@ export default function App() {
             {/* Public Routes */}
             <Route path="/login" element={<Login />} />
             <Route path="/signup" element={<Signup />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
 
             {/* Protected Routes */}
             <Route
