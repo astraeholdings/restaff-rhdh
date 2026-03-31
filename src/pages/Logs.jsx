@@ -11,188 +11,132 @@ export function Logs() {
       const allLogs = logger.getLogs()
       setLogs(filter === 'all' ? allLogs : logger.getLogs(filter))
     }
-
     loadLogs()
-
-    if (autoRefresh) {
-      const interval = setInterval(loadLogs, 1000)
-      return () => clearInterval(interval)
-    }
+    if (autoRefresh) { const interval = setInterval(loadLogs, 1000); return () => clearInterval(interval) }
   }, [filter, autoRefresh])
 
-  const handleClearLogs = () => {
-    if (window.confirm('Are you sure you want to clear all logs?')) {
-      logger.clearLogs()
-      setLogs([])
-    }
-  }
+  const handleClearLogs = () => { if (window.confirm('Clear all logs?')) { logger.clearLogs(); setLogs([]) } }
 
   const handleExport = () => {
     const data = logger.exportLogs()
-    const element = document.createElement('a')
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(data))
-    element.setAttribute('download', `logs-${new Date().toISOString()}.json`)
-    element.style.display = 'none'
-    document.body.appendChild(element)
-    element.click()
-    document.body.removeChild(element)
+    const el = document.createElement('a')
+    el.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(data))
+    el.setAttribute('download', `logs-${new Date().toISOString()}.json`)
+    el.style.display = 'none'; document.body.appendChild(el); el.click(); document.body.removeChild(el)
   }
 
-  const getLevelColor = (level) => {
-    switch (level) {
-      case 'DEBUG':
-        return 'text-gray-500'
-      case 'INFO':
-        return 'text-blue-600'
-      case 'SUCCESS':
-        return 'text-green-600'
-      case 'WARN':
-        return 'text-yellow-600'
-      case 'ERROR':
-        return 'text-red-600'
-      default:
-        return 'text-gray-700'
-    }
+  const levelConfig = {
+    DEBUG: { color: 'var(--text-tertiary)', bg: 'var(--surface)', icon: 'bug_report', border: 'var(--border)' },
+    INFO: { color: 'var(--info)', bg: 'var(--info-light)', icon: 'info', border: '#93c5fd' },
+    SUCCESS: { color: 'var(--success)', bg: 'var(--success-light)', icon: 'check_circle', border: '#86efac' },
+    WARN: { color: '#d97706', bg: 'var(--warning-light)', icon: 'warning', border: '#fde68a' },
+    ERROR: { color: 'var(--danger)', bg: 'var(--danger-light)', icon: 'error', border: '#fca5a5' },
   }
 
-  const getLevelBg = (level) => {
-    switch (level) {
-      case 'DEBUG':
-        return 'bg-gray-100'
-      case 'INFO':
-        return 'bg-blue-50'
-      case 'SUCCESS':
-        return 'bg-green-50'
-      case 'WARN':
-        return 'bg-yellow-50'
-      case 'ERROR':
-        return 'bg-red-50'
-      default:
-        return 'bg-gray-50'
-    }
-  }
+  const stats = [
+    { label: 'Total', value: logs.length, color: 'var(--text-primary)', icon: 'analytics' },
+    { label: 'Errors', value: logs.filter(l => l.level === 'ERROR').length, color: 'var(--danger)', icon: 'error' },
+    { label: 'Warnings', value: logs.filter(l => l.level === 'WARN').length, color: '#d97706', icon: 'warning' },
+    { label: 'Success', value: logs.filter(l => l.level === 'SUCCESS').length, color: 'var(--success)', icon: 'check_circle' },
+    { label: 'Info', value: logs.filter(l => l.level === 'INFO').length, color: 'var(--info)', icon: 'info' },
+  ]
 
   return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-3xl font-serif font-bold mb-2">Application Logs</h1>
-        <p className="text-gray-600">View real-time application logs for debugging</p>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header">
+        <h1>Application Logs</h1>
+        <p>Real-time application logs for debugging</p>
       </div>
 
       {/* Controls */}
       <div className="card flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
-        <div className="flex gap-2 flex-wrap">
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="w-4 h-4"
-            />
-            <span className="text-sm">Auto-refresh</span>
+        <div className="flex items-center gap-4">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <div className="relative">
+              <input type="checkbox" checked={autoRefresh} onChange={(e) => setAutoRefresh(e.target.checked)} className="sr-only" />
+              <div className="w-9 h-5 rounded-full transition-colors" style={{ background: autoRefresh ? 'var(--primary)' : 'var(--border)' }}>
+                <div className="absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform shadow-sm" style={{ transform: autoRefresh ? 'translateX(18px)' : 'translateX(2px)' }} />
+              </div>
+            </div>
+            <span className="text-sm font-medium" style={{ color: 'var(--text-secondary)' }}>Live</span>
           </label>
 
-          <select
-            value={filter}
-            onChange={(e) => setFilter(e.target.value)}
-            className="form-input text-sm py-1 px-2"
-          >
+          <select value={filter} onChange={(e) => setFilter(e.target.value)} className="form-input text-xs py-1.5 px-3 w-auto">
             <option value="all">All Logs</option>
-            <option value="DEBUG">Debug Only</option>
-            <option value="INFO">Info Only</option>
-            <option value="SUCCESS">Success Only</option>
-            <option value="WARN">Warnings Only</option>
-            <option value="ERROR">Errors Only</option>
+            <option value="DEBUG">Debug</option>
+            <option value="INFO">Info</option>
+            <option value="SUCCESS">Success</option>
+            <option value="WARN">Warnings</option>
+            <option value="ERROR">Errors</option>
           </select>
         </div>
 
         <div className="flex gap-2">
-          <button onClick={handleExport} className="btn-secondary text-sm py-2">
-            📥 Export
+          <button onClick={handleExport} className="btn-ghost btn-small flex items-center gap-1.5" style={{ border: '1px solid var(--border)' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>download</span> Export
           </button>
-          <button onClick={handleClearLogs} className="btn-secondary text-sm py-2">
-            🗑️ Clear
+          <button onClick={handleClearLogs} className="btn-ghost btn-small flex items-center gap-1.5" style={{ border: '1px solid var(--border)', color: 'var(--danger)' }}>
+            <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>delete</span> Clear
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
-        <div className="card text-center">
-          <p className="text-xs text-gray-600">Total</p>
-          <p className="text-lg font-bold">{logs.length}</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-xs text-gray-600">Errors</p>
-          <p className="text-lg font-bold text-red-600">{logs.filter(l => l.level === 'ERROR').length}</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-xs text-gray-600">Warnings</p>
-          <p className="text-lg font-bold text-yellow-600">{logs.filter(l => l.level === 'WARN').length}</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-xs text-gray-600">Success</p>
-          <p className="text-lg font-bold text-green-600">{logs.filter(l => l.level === 'SUCCESS').length}</p>
-        </div>
-        <div className="card text-center">
-          <p className="text-xs text-gray-600">Info</p>
-          <p className="text-lg font-bold text-blue-600">{logs.filter(l => l.level === 'INFO').length}</p>
-        </div>
+      <div className="grid grid-cols-5 gap-2">
+        {stats.map(stat => (
+          <div key={stat.label} className="card text-center py-3">
+            <span className="material-symbols-rounded" style={{ fontSize: '18px', color: stat.color }}>{stat.icon}</span>
+            <p className="text-xl font-bold mt-1" style={{ color: stat.color }}>{stat.value}</p>
+            <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{stat.label}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Logs List */}
-      <div className="space-y-1 max-h-[600px] overflow-y-auto">
+      {/* Log Entries */}
+      <div
+        className="rounded-xl overflow-hidden"
+        style={{ background: '#0c1222', border: '1px solid #1e293b', maxHeight: '600px', overflowY: 'auto' }}
+      >
         {logs.length === 0 ? (
-          <div className="card text-center py-8 text-gray-600">
-            No logs yet. Application logs will appear here.
+          <div className="text-center py-12">
+            <span className="material-symbols-rounded" style={{ fontSize: '48px', color: '#334155', display: 'block', marginBottom: '8px' }}>terminal</span>
+            <p className="text-sm" style={{ color: '#475569' }}>No logs yet. Application logs will appear here.</p>
           </div>
         ) : (
-          logs.map((log, idx) => (
-            <div
-              key={idx}
-              className={`${getLevelBg(log.level)} border-l-4 p-3 rounded text-sm font-mono`}
-              style={{
-                borderLeftColor: log.level === 'ERROR' ? '#dc2626' : log.level === 'WARN' ? '#f59e0b' : log.level === 'SUCCESS' ? '#16a34a' : '#3b82f6',
-              }}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex-1 min-w-0">
-                  <div className="flex gap-2 items-start">
-                    <span className={`font-bold text-xs ${getLevelColor(log.level)} whitespace-nowrap`}>
-                      {log.level}
-                    </span>
-                    <span className="text-gray-600 text-xs whitespace-nowrap">
-                      {new Date(log.timestamp).toLocaleTimeString()}
-                    </span>
-                  </div>
-                  <p className="text-gray-900 break-words mt-1">{log.message}</p>
+          <div className="p-2 space-y-0.5 font-mono text-xs">
+            {logs.map((log, idx) => {
+              const lc = levelConfig[log.level] || levelConfig.INFO
+              return (
+                <div key={idx} className="flex items-start gap-2 p-2 rounded-lg transition-colors" style={{ background: 'transparent' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.03)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <span className="material-symbols-rounded" style={{ fontSize: '14px', color: lc.color, marginTop: '2px', flexShrink: 0 }}>{lc.icon}</span>
+                  <span className="font-bold" style={{ color: lc.color, width: '56px', flexShrink: 0 }}>{log.level}</span>
+                  <span style={{ color: '#64748b', flexShrink: 0 }}>{new Date(log.timestamp).toLocaleTimeString()}</span>
+                  <span style={{ color: '#e2e8f0', flex: 1, wordBreak: 'break-word' }}>{log.message}</span>
                   {log.data && (
-                    <details className="mt-1">
-                      <summary className="cursor-pointer text-xs text-gray-600 hover:text-gray-900">
-                        Details
-                      </summary>
-                      <pre className="bg-white p-2 rounded mt-1 text-xs overflow-x-auto">
-                        {JSON.stringify(log.data, null, 2)}
-                      </pre>
+                    <details className="inline ml-2 flex-shrink-0">
+                      <summary className="cursor-pointer" style={{ color: '#64748b' }}>▸</summary>
+                      <pre className="p-2 rounded mt-1 text-xs overflow-x-auto" style={{ background: '#1e293b', color: '#e2e8f0' }}>{JSON.stringify(log.data, null, 2)}</pre>
                     </details>
                   )}
                 </div>
-              </div>
-            </div>
-          ))
+              )
+            })}
+          </div>
         )}
       </div>
 
-      {/* Info Box */}
-      <div className="card bg-blue-50 border border-blue-200">
-        <h3 className="font-medium mb-2">📋 How to Use Logs</h3>
-        <ul className="text-sm space-y-1 text-gray-700">
-          <li>• <strong>Auto-refresh:</strong> Automatically updates logs in real-time</li>
-          <li>• <strong>Filter:</strong> View specific types of log messages</li>
-          <li>• <strong>Export:</strong> Download logs as JSON for sharing/analysis</li>
-          <li>• <strong>Details:</strong> Click "Details" to expand log data</li>
-          <li>• <strong>Storage:</strong> Logs are saved in browser storage (up to 500 entries)</li>
-        </ul>
+      {/* Info */}
+      <div className="alert alert-info">
+        <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--info)' }}>help</span>
+        <div className="text-xs space-y-0.5">
+          <p><strong>Live:</strong> Auto-updates logs in real-time</p>
+          <p><strong>Filter:</strong> View specific log levels</p>
+          <p><strong>Export:</strong> Download logs as JSON</p>
+          <p><strong>Storage:</strong> Browser storage, up to 500 entries</p>
+        </div>
       </div>
     </div>
   )

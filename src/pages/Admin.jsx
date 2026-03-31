@@ -14,235 +14,124 @@ export function Admin() {
   const [pendingNotes, setPendingNotes] = useState([])
   const [loading, setLoading] = useState(false)
 
-  // Check admin/superAdmin access
   const isSuperAdmin = profile?.role === 'superAdmin'
   const isAdmin = profile?.role === 'admin'
 
   if (!isAdmin && !isSuperAdmin) {
     return (
-      <div className="card text-center py-8">
-        <p className="text-red-light font-medium">Unauthorized: Admin access required</p>
+      <div className="card text-center py-12">
+        <span className="material-symbols-rounded" style={{ fontSize: '48px', color: 'var(--danger)', display: 'block', marginBottom: '12px' }}>lock</span>
+        <p className="font-semibold" style={{ color: 'var(--danger)' }}>Unauthorized: Admin access required</p>
       </div>
     )
   }
 
-  useEffect(() => {
-    loadData()
-  }, [activeTab])
+  useEffect(() => { loadData() }, [activeTab])
 
   const loadData = async () => {
     setLoading(true)
     try {
       switch (activeTab) {
-        case 'users':
-          const { data: usersData } = await supabase
-            .from('profiles')
-            .select('*, homes(name)')
-            .order('full_name')
-          setStaff(usersData || [])
-          break
-        case 'homes':
-          const { data: homesData } = await supabase.from('homes').select('*').order('name')
-          setHomes(homesData || [])
-          break
-        case 'staff':
-          const { data: staffData } = await supabase
-            .from('profiles')
-            .select('*, homes(name)')
-            .order('full_name')
-          setStaff(staffData || [])
-          break
-        case 'clients':
-          const { data: clientsData } = await supabase
-            .from('clients')
-            .select('*, homes(name)')
-            .eq('active', true)
-            .order('first_name')
-          setClients(clientsData || [])
-          break
-        case 'notes':
-          const { data: notesData } = await supabase
-            .from('daily_notes')
-            .select('*, clients(first_name, last_name), profiles(full_name), homes(name)')
-            .eq('supervisor_review_status', 'submitted')
-            .order('created_at', { ascending: false })
-          setPendingNotes(notesData || [])
-          break
+        case 'users': { const { data } = await supabase.from('profiles').select('*, homes(name)').order('full_name'); setStaff(data || []); break }
+        case 'homes': { const { data } = await supabase.from('homes').select('*').order('name'); setHomes(data || []); break }
+        case 'staff': { const { data } = await supabase.from('profiles').select('*, homes(name)').order('full_name'); setStaff(data || []); break }
+        case 'clients': { const { data } = await supabase.from('clients').select('*, homes(name)').eq('active', true).order('first_name'); setClients(data || []); break }
+        case 'notes': { const { data } = await supabase.from('daily_notes').select('*, clients(first_name, last_name), profiles(full_name), homes(name)').eq('supervisor_review_status', 'submitted').order('created_at', { ascending: false }); setPendingNotes(data || []); break }
       }
-    } catch (error) {
-      console.error('Error loading data:', error)
-    } finally {
-      setLoading(false)
-    }
+    } catch (error) { console.error('Error loading data:', error) }
+    finally { setLoading(false) }
   }
 
-  const approveNote = async (noteId) => {
-    try {
-      const { error } = await supabase
-        .from('daily_notes')
-        .update({
-          supervisor_review_status: 'approved',
-          supervisor_id: profile.id,
-          supervisor_signed_at: new Date().toISOString(),
-        })
-        .eq('id', noteId)
-
-      if (error) throw error
-      await loadData()
-    } catch (err) {
-      console.error('Error approving note:', err)
-    }
-  }
-
-  const rejectNote = async (noteId) => {
-    try {
-      const { error } = await supabase
-        .from('daily_notes')
-        .update({ supervisor_review_status: 'draft' })
-        .eq('id', noteId)
-
-      if (error) throw error
-      await loadData()
-    } catch (err) {
-      console.error('Error rejecting note:', err)
-    }
-  }
-
-  const updateUserRole = async (userId, newRole) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ role: newRole })
-        .eq('id', userId)
-
-      if (error) throw error
-      await loadData()
-    } catch (err) {
-      console.error('Error updating user role:', err)
-    }
-  }
-
-  const toggleUserActive = async (userId, currentStatus) => {
-    try {
-      const { error } = await supabase
-        .from('profiles')
-        .update({ active: !currentStatus })
-        .eq('id', userId)
-
-      if (error) throw error
-      await loadData()
-    } catch (err) {
-      console.error('Error updating user status:', err)
-    }
-  }
+  const approveNote = async (noteId) => { try { const { error } = await supabase.from('daily_notes').update({ supervisor_review_status: 'approved', supervisor_id: profile.id, supervisor_signed_at: new Date().toISOString() }).eq('id', noteId); if (error) throw error; await loadData() } catch (err) { console.error(err) } }
+  const rejectNote = async (noteId) => { try { const { error } = await supabase.from('daily_notes').update({ supervisor_review_status: 'draft' }).eq('id', noteId); if (error) throw error; await loadData() } catch (err) { console.error(err) } }
+  const updateUserRole = async (userId, newRole) => { try { const { error } = await supabase.from('profiles').update({ role: newRole }).eq('id', userId); if (error) throw error; await loadData() } catch (err) { console.error(err) } }
+  const toggleUserActive = async (userId, currentStatus) => { try { const { error } = await supabase.from('profiles').update({ active: !currentStatus }).eq('id', userId); if (error) throw error; await loadData() } catch (err) { console.error(err) } }
 
   const tabs = [
-    ...(isSuperAdmin ? [{ id: 'users', label: 'User Management' }] : []),
-    { id: 'homes', label: 'Homes' },
-    { id: 'staff', label: 'Staff' },
-    { id: 'clients', label: 'Clients' },
-    { id: 'notes', label: 'Daily Notes Review' },
+    ...(isSuperAdmin ? [{ id: 'users', label: 'Users', icon: 'manage_accounts' }] : []),
+    { id: 'homes', label: 'Homes', icon: 'home' },
+    { id: 'staff', label: 'Staff', icon: 'badge' },
+    { id: 'clients', label: 'Clients', icon: 'group' },
+    { id: 'notes', label: 'Reviews', icon: 'rate_review' },
   ]
 
-  return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-serif font-bold">Administration</h1>
+  const tabIcons = { users: 'manage_accounts', homes: 'home', staff: 'badge', clients: 'group', notes: 'rate_review' }
 
-      {/* Tabs */}
-      <div className="flex gap-2 border-b">
+  return (
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header">
+        <h1>Administration</h1>
+        <p>Manage homes, staff, clients, and reviews</p>
+      </div>
+
+      {/* Tab Bar */}
+      <div className="flex gap-1 p-1 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
         {tabs.map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2 border-b-2 transition ${
-              activeTab === tab.id
-                ? 'border-primary text-primary font-medium'
-                : 'border-transparent text-gray-600 hover:text-gray-900'
-            }`}
+            className="flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all flex-1 justify-center"
+            style={activeTab === tab.id ? {
+              background: 'var(--surface-raised)', color: 'var(--primary)',
+              boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-light)',
+            } : {
+              background: 'transparent', color: 'var(--text-tertiary)', border: '1px solid transparent',
+            }}
           >
-            {tab.label}
+            <span className="material-symbols-rounded" style={{ fontSize: '18px' }}>{tab.icon}</span>
+            <span className="hidden md:inline">{tab.label}</span>
           </button>
         ))}
       </div>
 
       {loading ? (
-        <div className="text-center py-8">Loading...</div>
+        <div className="space-y-3">
+          {[1,2,3].map(i => <div key={i} className="skeleton h-16 rounded-xl" />)}
+        </div>
       ) : (
         <div>
-          {/* Users Tab - Super Admin Only */}
+          {/* Users Tab */}
           {activeTab === 'users' && isSuperAdmin && (
             <div className="space-y-4">
-              <div className="mb-4">
-                <h2 className="text-xl font-serif font-bold mb-4">All Users</h2>
-                <p className="text-sm text-gray-600 mb-4">Manage user roles and permissions</p>
+              <div className="card">
+                <h2 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+                  <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--primary)' }}>manage_accounts</span>
+                  All Users
+                </h2>
+                <div className="table-container">
+                  <table className="table-styled">
+                    <thead><tr><th>Name</th><th>Role</th><th>Home</th><th>Position</th><th>Status</th></tr></thead>
+                    <tbody>
+                      {staff.map(person => (
+                        <tr key={person.id}>
+                          <td className="font-medium">{person.full_name}</td>
+                          <td>
+                            <select value={person.role} onChange={(e) => updateUserRole(person.id, e.target.value)} disabled={person.role === 'superAdmin' && person.id !== profile?.id} className="form-input text-xs py-1 px-2 w-auto">
+                              <option value="staff">Staff</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option>
+                              {person.role === 'superAdmin' && <option value="superAdmin">Super Admin</option>}
+                            </select>
+                          </td>
+                          <td className="text-sm">{person.homes?.name || '—'}</td>
+                          <td className="text-sm">{person.position || '—'}</td>
+                          <td>
+                            <button onClick={() => toggleUserActive(person.id, person.active)} disabled={person.role === 'superAdmin'} className={`badge cursor-pointer ${person.active ? 'badge-success' : 'badge-warning'}`}>
+                              {person.active ? 'Active' : 'Inactive'}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              <div className="card overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="text-left p-3 font-medium">Name</th>
-                      <th className="text-left p-3 font-medium">Email</th>
-                      <th className="text-left p-3 font-medium">Role</th>
-                      <th className="text-left p-3 font-medium">Home</th>
-                      <th className="text-left p-3 font-medium">Position</th>
-                      <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-left p-3 font-medium">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {staff.map(person => (
-                      <tr key={person.id} className="border-b hover:bg-gray-50">
-                        <td className="p-3 font-medium">{person.full_name}</td>
-                        <td className="p-3 text-sm text-gray-600">
-                          {person.user_id ? `User ${person.user_id.substring(0, 8)}...` : '—'}
-                        </td>
-                        <td className="p-3">
-                          <select
-                            value={person.role}
-                            onChange={(e) => updateUserRole(person.id, e.target.value)}
-                            disabled={person.role === 'superAdmin' && person.id !== profile?.id}
-                            className="form-input text-sm py-1"
-                          >
-                            <option value="staff">Staff</option>
-                            <option value="supervisor">Supervisor</option>
-                            <option value="admin">Admin</option>
-                            {person.role === 'superAdmin' && (
-                              <option value="superAdmin">Super Admin</option>
-                            )}
-                          </select>
-                        </td>
-                        <td className="p-3 text-sm">{person.homes?.name || '—'}</td>
-                        <td className="p-3 text-sm">{person.position || '—'}</td>
-                        <td className="p-3">
-                          <button
-                            onClick={() => toggleUserActive(person.id, person.active)}
-                            disabled={person.role === 'superAdmin'}
-                            className={`badge text-xs cursor-pointer ${
-                              person.active ? 'badge-success' : 'badge-warning'
-                            }`}
-                          >
-                            {person.active ? 'Active' : 'Inactive'}
-                          </button>
-                        </td>
-                        <td className="p-3 text-sm">
-                          <button className="text-primary hover:underline text-xs">
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="card bg-blue-50">
-                <h3 className="font-medium mb-2">Role Descriptions</h3>
-                <div className="space-y-2 text-sm text-gray-700">
-                  <p><span className="font-medium">Super Admin:</span> Full system access, can manage all users and homes</p>
-                  <p><span className="font-medium">Admin:</span> Can manage home staff and clients, review daily notes</p>
-                  <p><span className="font-medium">Supervisor:</span> Can supervise staff, approve daily notes</p>
-                  <p><span className="font-medium">Staff:</span> Can clock in/out, create daily notes, log medications</p>
+              <div className="alert alert-info">
+                <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--info)' }}>info</span>
+                <div className="text-xs space-y-1">
+                  <p><strong>Super Admin:</strong> Full system access</p>
+                  <p><strong>Admin:</strong> Manage home staff and clients</p>
+                  <p><strong>Supervisor:</strong> Approve daily notes</p>
+                  <p><strong>Staff:</strong> Clock in/out, create notes, log meds</p>
                 </div>
               </div>
             </div>
@@ -250,17 +139,18 @@ export function Admin() {
 
           {/* Homes Tab */}
           {activeTab === 'homes' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 stagger-children">
               {homes.map(home => (
-                <div key={home.id} className="card">
-                  <h3 className="font-medium text-lg mb-2">{home.name}</h3>
-                  <div className="space-y-1 text-sm text-gray-600">
-                    <p>{home.address}</p>
-                    <p>License: {home.license_number}</p>
-                    <p className={`font-medium ${home.active ? 'text-green-600' : 'text-gray-400'}`}>
-                      {home.active ? '✓ Active' : 'Inactive'}
-                    </p>
+                <div key={home.id} className="card-elevated">
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary-50)', color: 'var(--primary)' }}>
+                      <span className="material-symbols-rounded" style={{ fontSize: '20px', fontVariationSettings: "'FILL' 1" }}>home</span>
+                    </div>
+                    <span className={`badge ${home.active ? 'badge-success' : 'badge-warning'}`}>{home.active ? 'Active' : 'Inactive'}</span>
                   </div>
+                  <h3 className="font-semibold text-lg mb-1">{home.name}</h3>
+                  <p className="text-sm mb-1" style={{ color: 'var(--text-secondary)' }}>{home.address}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>License: {home.license_number}</p>
                 </div>
               ))}
             </div>
@@ -269,140 +159,89 @@ export function Admin() {
           {/* Staff Tab */}
           {activeTab === 'staff' && (
             <div className="card">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-medium">Name</th>
-                    <th className="text-left p-3 font-medium">Role</th>
-                    <th className="text-left p-3 font-medium">Position</th>
-                    <th className="text-left p-3 font-medium">Home</th>
-                    <th className="text-left p-3 font-medium">Phone</th>
-                    <th className="text-left p-3 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {staff.map(person => (
-                    <tr key={person.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3">{person.full_name}</td>
-                      <td className="p-3">
-                        <span className="badge badge-info text-xs">{person.role}</span>
-                      </td>
-                      <td className="p-3 text-sm">{person.position || '—'}</td>
-                      <td className="p-3 text-sm">{person.homes?.name || '—'}</td>
-                      <td className="p-3 text-sm">{person.phone || '—'}</td>
-                      <td className="p-3">
-                        <span className={`badge ${person.active ? 'badge-success' : 'badge-warning'}`}>
-                          {person.active ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <h2 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+                <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--primary)' }}>badge</span>
+                Staff Directory
+              </h2>
+              <div className="table-container">
+                <table className="table-styled">
+                  <thead><tr><th>Name</th><th>Role</th><th>Position</th><th>Home</th><th>Phone</th><th>Status</th></tr></thead>
+                  <tbody>
+                    {staff.map(person => (
+                      <tr key={person.id}>
+                        <td className="font-medium">{person.full_name}</td>
+                        <td><span className="badge badge-info">{person.role}</span></td>
+                        <td className="text-sm">{person.position || '—'}</td>
+                        <td className="text-sm">{person.homes?.name || '—'}</td>
+                        <td className="text-sm">{person.phone || '—'}</td>
+                        <td><span className={`badge ${person.active ? 'badge-success' : 'badge-warning'}`}>{person.active ? 'Active' : 'Inactive'}</span></td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
           {/* Clients Tab */}
           {activeTab === 'clients' && (
             <div className="card">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left p-3 font-medium">Name</th>
-                    <th className="text-left p-3 font-medium">Support Level</th>
-                    <th className="text-left p-3 font-medium">Home</th>
-                    <th className="text-left p-3 font-medium">Emergency Contact</th>
-                    <th className="text-left p-3 font-medium">DOB</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {clients.map(client => (
-                    <tr key={client.id} className="border-b hover:bg-gray-50">
-                      <td className="p-3">{client.first_name} {client.last_name}</td>
-                      <td className="p-3">
-                        <span className="badge badge-info text-xs">{client.support_level}</span>
-                      </td>
-                      <td className="p-3">{client.homes?.name}</td>
-                      <td className="p-3 text-xs">
-                        {client.emergency_contact_name}
-                        {client.emergency_contact_phone && <br />}
-                        {client.emergency_contact_phone}
-                      </td>
-                      <td className="p-3 text-xs">
-                        {client.dob ? format(parseISO(client.dob), 'MMM d, yyyy') : '—'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <h2 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+                <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--primary)' }}>group</span>
+                All Clients
+              </h2>
+              <div className="table-container">
+                <table className="table-styled">
+                  <thead><tr><th>Name</th><th>Support Level</th><th>Home</th><th>Emergency Contact</th><th>DOB</th></tr></thead>
+                  <tbody>
+                    {clients.map(client => (
+                      <tr key={client.id}>
+                        <td className="font-medium">{client.first_name} {client.last_name}</td>
+                        <td><span className="badge badge-info">{client.support_level}</span></td>
+                        <td className="text-sm">{client.homes?.name}</td>
+                        <td className="text-sm">{client.emergency_contact_name}{client.emergency_contact_phone && <><br /><span style={{ color: 'var(--text-tertiary)' }}>{client.emergency_contact_phone}</span></>}</td>
+                        <td className="text-xs">{client.dob ? format(parseISO(client.dob), 'MMM d, yyyy') : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
-          {/* Daily Notes Review Tab */}
+          {/* Notes Review Tab */}
           {activeTab === 'notes' && (
             <div className="space-y-4">
               {pendingNotes.length === 0 ? (
-                <div className="card text-center py-8 text-gray-600">
-                  No pending notes for review
-                </div>
+                <div className="card empty-state"><span className="empty-icon material-symbols-rounded" style={{ fontSize: '48px' }}>task_alt</span><p>No pending reviews</p></div>
               ) : (
                 pendingNotes.map(note => (
-                  <div key={note.id} className="card">
-                    <div className="flex items-start justify-between mb-4">
+                  <div key={note.id} className="card" style={{ borderLeft: '4px solid var(--warning)' }}>
+                    <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h3 className="font-medium text-lg">
-                          {note.clients?.first_name} {note.clients?.last_name}
-                        </h3>
-                        <p className="text-xs text-gray-600">
-                          {note.homes?.name} • {format(parseISO(note.created_at), 'MMM d, yyyy h:mm a')}
-                        </p>
-                        <p className="text-xs text-gray-600">By: {note.profiles?.full_name}</p>
+                        <h3 className="font-semibold text-base">{note.clients?.first_name} {note.clients?.last_name}</h3>
+                        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{note.homes?.name} &bull; {format(parseISO(note.created_at), 'MMM d, yyyy h:mm a')}</p>
+                        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>By: {note.profiles?.full_name}</p>
                       </div>
-                      <span className="badge badge-warning">Submitted</span>
+                      <span className="badge badge-warning"><span className="material-symbols-rounded" style={{ fontSize: '14px' }}>schedule_send</span>Submitted</span>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3 mb-4 text-sm bg-gray-50 p-3 rounded">
+                    <div className="grid grid-cols-2 gap-2 mb-3 p-3 rounded-lg" style={{ background: 'var(--surface)' }}>
                       {['breakfast', 'lunch', 'dinner', 'snack'].map(meal => (
-                        <div key={meal}>
-                          <span className="font-medium capitalize text-xs text-gray-600">{meal}:</span>
-                          <p>{note.meals?.[meal] || '—'}</p>
-                        </div>
+                        <div key={meal}><span className="text-xs font-semibold capitalize" style={{ color: 'var(--text-tertiary)' }}>{meal}:</span><p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{note.meals?.[meal] || '—'}</p></div>
                       ))}
                     </div>
 
-                    {note.medications_given && (
-                      <div className="mb-3 text-sm">
-                        <span className="font-medium">Medications:</span>
-                        <p>{note.medications_given}</p>
-                      </div>
-                    )}
+                    {note.medications_given && <div className="mb-2 text-sm"><span className="font-semibold text-xs" style={{ color: 'var(--text-tertiary)' }}>Medications:</span> <span style={{ color: 'var(--text-secondary)' }}>{note.medications_given}</span></div>}
+                    {note.activities && <div className="mb-2 text-sm"><span className="font-semibold text-xs" style={{ color: 'var(--text-tertiary)' }}>Activities:</span> <span style={{ color: 'var(--text-secondary)' }}>{note.activities}</span></div>}
+                    {note.behaviors && <div className="mb-2 text-sm"><span className="font-semibold text-xs" style={{ color: 'var(--text-tertiary)' }}>Behaviors:</span> <span style={{ color: 'var(--text-secondary)' }}>{note.behaviors}</span></div>}
 
-                    {note.activities && (
-                      <div className="mb-3 text-sm">
-                        <span className="font-medium">Activities:</span>
-                        <p>{note.activities}</p>
-                      </div>
-                    )}
-
-                    {note.behaviors && (
-                      <div className="mb-3 text-sm">
-                        <span className="font-medium">Behaviors:</span>
-                        <p>{note.behaviors}</p>
-                      </div>
-                    )}
-
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => approveNote(note.id)}
-                        className="btn-primary text-sm py-2"
-                      >
-                        Approve & Sign
+                    <div className="flex gap-2 mt-3">
+                      <button onClick={() => approveNote(note.id)} className="btn-primary btn-small flex items-center gap-1">
+                        <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>check</span> Approve &amp; Sign
                       </button>
-                      <button
-                        onClick={() => rejectNote(note.id)}
-                        className="btn-secondary text-sm py-2"
-                      >
-                        Return for Revision
+                      <button onClick={() => rejectNote(note.id)} className="btn-ghost btn-small" style={{ border: '1px solid var(--border)' }}>
+                        <span className="material-symbols-rounded" style={{ fontSize: '16px' }}>undo</span> Return
                       </button>
                     </div>
                   </div>

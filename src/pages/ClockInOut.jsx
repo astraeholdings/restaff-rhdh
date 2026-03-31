@@ -19,27 +19,16 @@ export function ClockInOut() {
   useEffect(() => {
     if (!activeHome?.id) return
     fetchClockedInStaff()
-
     const interval = setInterval(updateElapsedTimes, 1000)
     return () => clearInterval(interval)
   }, [activeHome?.id])
 
   const fetchClockedInStaff = async () => {
     if (!activeHome?.id) return
-
     const today = format(new Date(), 'yyyy-MM-dd')
-    const { data, error } = await supabase
-      .from('clock_records')
-      .select('*, profiles(full_name)')
-      .eq('home_id', activeHome.id)
-      .gte('created_at', `${today}T00:00:00`)
-      .order('created_at', { ascending: false })
-
-    if (error) {
-      console.error('Error fetching staff:', error)
-    } else {
-      setStaffList(data || [])
-    }
+    const { data, error } = await supabase.from('clock_records').select('*, profiles(full_name)').eq('home_id', activeHome.id).gte('created_at', `${today}T00:00:00`).order('created_at', { ascending: false })
+    if (error) console.error('Error fetching staff:', error)
+    else setStaffList(data || [])
   }
 
   const updateElapsedTimes = () => {
@@ -58,46 +47,38 @@ export function ClockInOut() {
 
   const handleClockInOut = async (e) => {
     e.preventDefault()
-    setError(null)
-    setSuccess(null)
-    setLoading(true)
-
+    setError(null); setSuccess(null); setLoading(true)
     try {
-      const { error } = await supabase.from('clock_records').insert([
-        {
-          home_id: activeHome.id,
-          profile_id: profile.id,
-          shift_type: shiftType,
-          action,
-          notes: notes || null,
-        },
-      ])
-
+      const { error } = await supabase.from('clock_records').insert([{ home_id: activeHome.id, profile_id: profile.id, shift_type: shiftType, action, notes: notes || null }])
       if (error) throw error
-
       setSuccess(`Successfully clocked ${action}`)
       setNotes('')
       setTimeout(() => setSuccess(null), 3000)
       await fetchClockedInStaff()
-    } catch (err) {
-      setError(err.message)
-    } finally {
-      setLoading(false)
-    }
+    } catch (err) { setError(err.message) }
+    finally { setLoading(false) }
   }
 
+  const getInitials = (name) => name?.split(' ').map(n => n[0]).join('').toUpperCase() || '?'
+
   return (
-    <div className="space-y-6">
-      <h1 className="text-3xl font-serif font-bold">Clock In/Out</h1>
+    <div className="space-y-6 animate-fade-in">
+      <div className="page-header">
+        <h1>Clock In/Out</h1>
+        <p>Record your shift times</p>
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Clock In/Out Form */}
+        {/* Clock Form */}
         <div className="lg:col-span-1">
-          <div className="card">
-            <h2 className="font-serif font-bold text-lg mb-4">Record Time</h2>
+          <div className="card sticky top-6">
+            <h2 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+              <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--primary)' }}>schedule</span>
+              Record Time
+            </h2>
 
-            {error && <div className="mb-4 p-3 bg-red-light text-white rounded text-sm">{error}</div>}
-            {success && <div className="mb-4 p-3 bg-green-600 text-white rounded text-sm">{success}</div>}
+            {error && <div className="alert alert-error mb-4"><span className="material-symbols-rounded" style={{ fontSize: '18px' }}>error</span>{error}</div>}
+            {success && <div className="alert alert-success mb-4"><span className="material-symbols-rounded" style={{ fontSize: '18px' }}>check_circle</span>{success}</div>}
 
             <form onSubmit={handleClockInOut} className="space-y-4">
               <div>
@@ -108,7 +89,6 @@ export function ClockInOut() {
                   <option value="grave">Grave (10 PM - 6 AM)</option>
                 </select>
               </div>
-
               <div>
                 <label className="form-label">Action</label>
                 <select value={action} onChange={(e) => setAction(e.target.value)} className="form-input">
@@ -118,18 +98,10 @@ export function ClockInOut() {
                   <option value="break end">Break End</option>
                 </select>
               </div>
-
               <div>
                 <label className="form-label">Notes (Optional)</label>
-                <textarea
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  className="form-input"
-                  rows="3"
-                  placeholder="Any notes about this time entry..."
-                />
+                <textarea value={notes} onChange={(e) => setNotes(e.target.value)} className="form-input" rows="3" placeholder="Any notes about this time entry..." />
               </div>
-
               <button type="submit" disabled={loading} className="w-full btn-primary">
                 {loading ? 'Submitting...' : 'Clock In/Out'}
               </button>
@@ -137,32 +109,36 @@ export function ClockInOut() {
           </div>
         </div>
 
-        {/* Currently Clocked In Staff */}
+        {/* Currently Clocked In */}
         <div className="lg:col-span-2">
           <div className="card">
-            <h2 className="font-serif font-bold text-lg mb-4">Currently Clocked In</h2>
+            <h2 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+              <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--success)' }}>groups</span>
+              Currently Clocked In
+            </h2>
 
             {staffList.length === 0 ? (
-              <p className="text-gray-600 text-center py-4">No staff clocked in today</p>
+              <div className="empty-state">
+                <span className="empty-icon material-symbols-rounded" style={{ fontSize: '48px' }}>schedule_off</span>
+                <p>No staff clocked in today</p>
+              </div>
             ) : (
               <div className="space-y-2">
                 {staffList.map((record) => {
                   const isClockedIn = ['arrived', 'break end'].includes(record.action)
                   if (!isClockedIn) return null
-
                   return (
-                    <div key={record.id} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-                      <div>
-                        <p className="font-medium">{record.profiles?.full_name}</p>
-                        <p className="text-xs text-gray-600 capitalize">
-                          {record.shift_type} shift • {record.action}
-                        </p>
+                    <div key={record.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
+                      <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'var(--primary-50)', color: 'var(--primary)' }}>
+                        {getInitials(record.profiles?.full_name)}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{record.profiles?.full_name}</p>
+                        <p className="text-xs capitalize" style={{ color: 'var(--text-tertiary)' }}>{record.shift_type} shift &bull; {record.action}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-mono font-bold text-primary">{elapsedTimes[record.profile_id]}</p>
-                        <p className="text-xs text-gray-600">
-                          {format(parseISO(record.created_at), 'h:mm a')}
-                        </p>
+                        <p className="font-mono text-sm font-bold" style={{ color: 'var(--primary)' }}>{elapsedTimes[record.profile_id]}</p>
+                        <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{format(parseISO(record.created_at), 'h:mm a')}</p>
                       </div>
                     </div>
                   )
@@ -173,28 +149,31 @@ export function ClockInOut() {
         </div>
       </div>
 
-      {/* Today's Clock Records */}
+      {/* Today's Records Table */}
       <div className="card">
-        <h2 className="font-serif font-bold text-lg mb-4">Today's Records</h2>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+        <h2 className="font-serif font-bold text-lg mb-4 flex items-center gap-2">
+          <span className="material-symbols-rounded" style={{ fontSize: '20px', color: 'var(--info)' }}>history</span>
+          Today&apos;s Records
+        </h2>
+        <div className="table-container">
+          <table className="table-styled">
             <thead>
-              <tr className="border-b">
-                <th className="text-left p-2 font-medium">Staff</th>
-                <th className="text-left p-2 font-medium">Shift</th>
-                <th className="text-left p-2 font-medium">Action</th>
-                <th className="text-left p-2 font-medium">Time</th>
-                <th className="text-left p-2 font-medium">Notes</th>
+              <tr>
+                <th>Staff</th>
+                <th>Shift</th>
+                <th>Action</th>
+                <th>Time</th>
+                <th>Notes</th>
               </tr>
             </thead>
             <tbody>
               {staffList.map(record => (
-                <tr key={record.id} className="border-b hover:bg-gray-50">
-                  <td className="p-2">{record.profiles?.full_name}</td>
-                  <td className="p-2 capitalize">{record.shift_type}</td>
-                  <td className="p-2 capitalize">{record.action}</td>
-                  <td className="p-2 text-xs">{format(parseISO(record.created_at), 'h:mm a')}</td>
-                  <td className="p-2 text-xs text-gray-600">{record.notes || '-'}</td>
+                <tr key={record.id}>
+                  <td className="font-medium">{record.profiles?.full_name}</td>
+                  <td className="capitalize">{record.shift_type}</td>
+                  <td><span className="tag capitalize">{record.action}</span></td>
+                  <td className="text-xs">{format(parseISO(record.created_at), 'h:mm a')}</td>
+                  <td className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{record.notes || '—'}</td>
                 </tr>
               ))}
             </tbody>
