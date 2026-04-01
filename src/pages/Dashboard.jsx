@@ -23,10 +23,15 @@ export function Dashboard() {
         setActiveClients(clientsData?.length || 0)
 
         const today = format(new Date(), 'yyyy-MM-dd')
-        const { data: clockData } = await supabase.from('clock_records').select('profile_id, action').eq('home_id', activeHome.id).gte('created_at', `${today}T00:00:00`).in('action', ['arrived', 'break end'])
-        const clocked = new Set()
-        clockData?.forEach(record => clocked.add(record.profile_id))
-        setClockedInStaff(clocked.size)
+        const { data: clockData } = await supabase.from('clock_records').select('profile_id, action, created_at').eq('home_id', activeHome.id).gte('created_at', `${today}T00:00:00`).order('created_at', { ascending: false })
+        const latestActionByPerson = {}
+        clockData?.forEach(record => {
+          if (!latestActionByPerson[record.profile_id]) {
+            latestActionByPerson[record.profile_id] = record.action
+          }
+        })
+        const clockedInCount = Object.values(latestActionByPerson).filter(action => action === 'arrived' || action === 'break end').length
+        setClockedInStaff(clockedInCount)
 
         const { data: incidentsData } = await supabase.from('incidents').select('id').eq('home_id', activeHome.id).gte('created_at', `${today}T00:00:00`)
         setTodayIncidents(incidentsData?.length || 0)

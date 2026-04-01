@@ -17,6 +17,11 @@ export function Admin() {
   const isSuperAdmin = profile?.role === 'superAdmin'
   const isAdmin = profile?.role === 'admin'
 
+  // useEffect must be called before any early return to comply with React Rules of Hooks
+  useEffect(() => {
+    if (isAdmin || isSuperAdmin) { loadData() }
+  }, [activeTab, isAdmin, isSuperAdmin])
+
   if (!isAdmin && !isSuperAdmin) {
     return (
       <div className="card text-center py-12">
@@ -25,8 +30,6 @@ export function Admin() {
       </div>
     )
   }
-
-  useEffect(() => { loadData() }, [activeTab])
 
   const loadData = async () => {
     setLoading(true)

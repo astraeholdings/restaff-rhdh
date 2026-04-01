@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useHome } from '../context/HomeContext'
-import { format, addDays } from 'date-fns'
+import { format, addDays, parseISO } from 'date-fns'
 
 export function Menu() {
   const { profile } = useAuth()
@@ -18,8 +18,8 @@ export function Menu() {
   useEffect(() => { if (!activeHome?.id) return; fetchMenusForWeek(); fetchMenuForDate() }, [activeHome?.id, selectedDate])
 
   const fetchMenusForWeek = async () => {
-    const weekStart = format(new Date(selectedDate), 'yyyy-MM-dd')
-    const weekEnd = format(addDays(new Date(selectedDate), 7), 'yyyy-MM-dd')
+    const weekStart = format(parseISO(selectedDate), 'yyyy-MM-dd')
+    const weekEnd = format(addDays(parseISO(selectedDate), 7), 'yyyy-MM-dd')
     const { data } = await supabase.from('menus').select('*').eq('home_id', activeHome.id).gte('date', weekStart).lte('date', weekEnd)
     setMenus(data || [])
   }
@@ -102,7 +102,7 @@ export function Menu() {
                     }}
                   >
                     <h3 className="font-semibold mb-2" style={{ color: selectedDate === m.date ? 'var(--primary)' : 'var(--text-primary)' }}>
-                      {format(new Date(m.date), 'EEEE, MMM d')}
+                      {format(parseISO(m.date), 'EEEE, MMM d')}
                     </h3>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       {['breakfast', 'lunch', 'dinner', 'snack'].map(meal => (

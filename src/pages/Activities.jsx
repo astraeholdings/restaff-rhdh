@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useHome } from '../context/HomeContext'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 
 export function Activities() {
   const { profile } = useAuth()
@@ -84,7 +84,7 @@ export function Activities() {
                         <h3 className="font-semibold text-base">{activity.title}</h3>
                         <div className="flex items-center gap-1.5 mt-1">
                           <span className="material-symbols-rounded" style={{ fontSize: '14px', color: 'var(--text-tertiary)' }}>calendar_today</span>
-                          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{format(new Date(activity.date), 'EEEE, MMM d, yyyy')}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{format(parseISO(activity.date), 'EEEE, MMM d, yyyy')}</p>
                         </div>
                       </div>
                     </div>

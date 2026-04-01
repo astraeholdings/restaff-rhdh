@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../context/AuthContext'
 import { useHome } from '../context/HomeContext'
@@ -16,6 +16,10 @@ export function ClockInOut() {
   const [error, setError] = useState(null)
   const [success, setSuccess] = useState(null)
 
+  // Ref keeps the interval callback from capturing stale staffList state
+  const staffListRef = useRef([])
+  staffListRef.current = staffList
+
   useEffect(() => {
     if (!activeHome?.id) return
     fetchClockedInStaff()
@@ -31,16 +35,26 @@ export function ClockInOut() {
     else setStaffList(data || [])
   }
 
+  // Returns the most-recent record per person whose last action was 'arrived' or 'break end'
+  const getActiveStaff = (records) => {
+    const latestByPerson = {}
+    records.forEach(record => {
+      if (!latestByPerson[record.profile_id]) {
+        latestByPerson[record.profile_id] = record
+      }
+    })
+    return Object.values(latestByPerson).filter(r => ['arrived', 'break end'].includes(r.action))
+  }
+
   const updateElapsedTimes = () => {
     const times = {}
-    staffList.forEach(record => {
-      if (['arrived', 'break end'].includes(record.action)) {
-        const created = parseISO(record.created_at)
-        const seconds = differenceInSeconds(new Date(), created)
-        const hours = Math.floor(seconds / 3600)
-        const minutes = Math.floor((seconds % 3600) / 60)
-        times[record.profile_id] = `${hours}h ${minutes}m`
-      }
+    // Use ref so we always read the latest staffList, not a stale closure value
+    getActiveStaff(staffListRef.current).forEach(record => {
+      const created = parseISO(record.created_at)
+      const seconds = differenceInSeconds(new Date(), created)
+      const hours = Math.floor(seconds / 3600)
+      const minutes = Math.floor((seconds % 3600) / 60)
+      times[record.profile_id] = `${hours}h ${minutes}m`
     })
     setElapsedTimes(times)
   }
@@ -117,17 +131,16 @@ export function ClockInOut() {
               Currently Clocked In
             </h2>
 
-            {staffList.length === 0 ? (
-              <div className="empty-state">
-                <span className="empty-icon material-symbols-rounded" style={{ fontSize: '48px' }}>schedule_off</span>
-                <p>No staff clocked in today</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {staffList.map((record) => {
-                  const isClockedIn = ['arrived', 'break end'].includes(record.action)
-                  if (!isClockedIn) return null
-                  return (
+            {(() => {
+              const activeStaff = getActiveStaff(staffList)
+              return activeStaff.length === 0 ? (
+                <div className="empty-state">
+                  <span className="empty-icon material-symbols-rounded" style={{ fontSize: '48px' }}>schedule_off</span>
+                  <p>No staff clocked in today</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {activeStaff.map((record) => (
                     <div key={record.id} className="flex items-center gap-3 p-3 rounded-xl" style={{ background: 'var(--surface)', border: '1px solid var(--border-light)' }}>
                       <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold" style={{ background: 'var(--primary-50)', color: 'var(--primary)' }}>
                         {getInitials(record.profiles?.full_name)}
@@ -141,10 +154,10 @@ export function ClockInOut() {
                         <p className="text-xs" style={{ color: 'var(--text-tertiary)' }}>{format(parseISO(record.created_at), 'h:mm a')}</p>
                       </div>
                     </div>
-                  )
-                })}
-              </div>
-            )}
+                  ))}
+                </div>
+              )
+            })()}
           </div>
         </div>
       </div>

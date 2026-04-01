@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useHome } from '../context/HomeContext'
-import { format, startOfWeek, addWeeks } from 'date-fns'
+import { format, startOfWeek, addWeeks, parseISO } from 'date-fns'
 
 export function Grocery() {
   const { activeHome } = useHome()
@@ -46,7 +46,7 @@ export function Grocery() {
     <div className="space-y-6 animate-fade-in">
       <div className="page-header">
         <h1>Grocery List</h1>
-        <p>Week of {format(new Date(weekOf), 'MMM d')} – {format(addWeeks(new Date(weekOf), 1), 'MMM d, yyyy')}</p>
+        <p>Week of {format(parseISO(weekOf), 'MMM d')} – {format(addWeeks(parseISO(weekOf), 1), 'MMM d, yyyy')}</p>
       </div>
 
       {/* Week selector + progress */}

@@ -124,7 +124,7 @@ export function MAR() {
               <tbody>
                 {marRecords.map(record => (
                   <tr key={record.id}>
-                    <td className="font-medium">{record.medication_id}</td>
+                    <td className="font-medium">{medications.find(m => m.id === record.medication_id)?.name || record.medication_id}</td>
                     <td><span className={`badge ${record.status === 'given' ? 'badge-success' : 'badge-warning'}`}>{record.status}</span></td>
                     <td className="text-xs">{format(new Date(record.administered_at), 'h:mm a')}</td>
                   </tr>

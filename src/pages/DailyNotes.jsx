@@ -93,6 +93,26 @@ export function DailyNotes() {
                   <input type="text" value={notes[meal]} onChange={(e) => setNotes({ ...notes, [meal]: e.target.value })} className="form-input" placeholder={`e.g., ${meal === 'breakfast' ? 'Eggs, toast, juice' : meal === 'lunch' ? 'Chicken sandwich' : meal === 'dinner' ? 'Fish, vegetables' : 'Fruit, crackers'}`} />
                 </div>
               ))}
+              <div>
+                <label className="form-label">Medications Given</label>
+                <textarea value={formData.medications_given} onChange={(e) => setFormData({ ...formData, medications_given: e.target.value })} className="form-input" rows="2" placeholder="List medications administered..." />
+              </div>
+              <div>
+                <label className="form-label">Activities</label>
+                <textarea value={formData.activities} onChange={(e) => setFormData({ ...formData, activities: e.target.value })} className="form-input" rows="2" placeholder="Activities completed today..." />
+              </div>
+              <div>
+                <label className="form-label">Behaviors</label>
+                <textarea value={formData.behaviors} onChange={(e) => setFormData({ ...formData, behaviors: e.target.value })} className="form-input" rows="2" placeholder="Behavioral observations..." />
+              </div>
+              <div>
+                <label className="form-label">Medical Appointments</label>
+                <input type="text" value={formData.medical_appointments} onChange={(e) => setFormData({ ...formData, medical_appointments: e.target.value })} className="form-input" placeholder="Any appointments today..." />
+              </div>
+              <div>
+                <label className="form-label">Clothing Log</label>
+                <input type="text" value={formData.clothing_log} onChange={(e) => setFormData({ ...formData, clothing_log: e.target.value })} className="form-input" placeholder="Clothing worn today..." />
+              </div>
               <button type="submit" disabled={loading} className="w-full btn-primary text-sm">{loading ? 'Creating...' : 'Create Note'}</button>
             </form>
           </div>
