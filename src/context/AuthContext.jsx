@@ -10,33 +10,9 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        logger.info('Checking authentication status...')
-        const { data: { session }, error } = await supabase.auth.getSession()
-
-        if (error) {
-          logger.error('Failed to get session:', error)
-          setLoading(false)
-          return
-        }
-
-        if (session?.user) {
-          logger.success('Session found for user:', { userId: session.user.id, email: session.user.email })
-          setUser(session.user)
-          await fetchProfile(session.user.id)
-        } else {
-          logger.info('No active session found')
-        }
-      } catch (err) {
-        logger.error('Error checking auth:', err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    checkAuth()
-
+    // onAuthStateChange fires INITIAL_SESSION on mount (with or without a session),
+    // so we don't need a separate getSession() call. Using both causes a race
+    // condition where two concurrent fetchProfile calls can leave loading stuck.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         logger.info('Auth state changed:', { event, userId: session?.user?.id })
@@ -45,7 +21,7 @@ export function AuthProvider({ children }) {
           setUser(session.user)
           await fetchProfile(session.user.id)
         } else {
-          logger.info('User logged out')
+          logger.info('No active session')
           setUser(null)
           setProfile(null)
         }
